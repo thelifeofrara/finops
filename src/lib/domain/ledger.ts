@@ -108,6 +108,7 @@ export function profitAndLoss(rows: TrialBalanceRow[]) {
   const expenseQ = rows
     .filter((r) => r.account.type === "EXPENSE" && r.account.system !== "suspense")
     .reduce((s, r) => s + r.balanceQ, 0);
-  const uncategorisedQ = rows.find((r) => r.account.system === "suspense")?.balanceQ ?? 0;
+  // Suspense holds money not yet categorised. Shown as a positive amount, whether it is income or expense.
+  const uncategorisedQ = Math.abs(rows.find((r) => r.account.system === "suspense")?.balanceQ ?? 0);
   return { incomeQ, expenseQ, profitQ: incomeQ - expenseQ, uncategorisedQ };
 }

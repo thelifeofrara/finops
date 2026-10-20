@@ -21,3 +21,12 @@ form.stack { display: grid; gap: 10px; max-width: 420px; }
 input, select, textarea, button { font: inherit; padding: 8px; border-radius: 6px; border: 1px solid #8886; }
 button { cursor: pointer; background: #1d4ed8; color: white; border: none; }
 .muted { opacity: .7; font-size: 14px; }
+.nav .right { display: flex; gap: 14px; align-items: center; }
+button.link { background: none; color: inherit; padding: 0; text-decoration: underline; }
+h1 { font-size: 24px; margin: 8px 0 12px; }
+h2 { font-size: 18px; margin: 24px 0 8px; }
+.notice { padding: 10px 12px; border-radius: 8px; background: #16a34a22; margin: 8px 0; }
+.error { padding: 10px 12px; border-radius: 8px; background: #dc262622; margin: 8px 0; }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; background: #8882; }
+select.small, input.small { padding: 4px 6px; font-size: 13px; }
+form.inline { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
