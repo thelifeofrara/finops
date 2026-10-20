@@ -1,0 +1,281 @@
+// FinOps data model. All money is stored as integer qəpik (1 ₼ = 100 qəpik).
+// The ledger is derived from invoices and bank transactions (see src/lib/ledger.ts),
+// so there are no journal tables to keep in sync.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Locale {
+  az
+  en
+}
+
+enum LegalForm {
+  INDIVIDUAL_ENTREPRENEUR
+  LLC
+}
+
+enum TaxRegime {
+  SIMPLIFIED
+  VAT
+  NON_VAT_GENERAL
+}
+
+enum InvoiceSource {
+  MANUAL
+  EQAIME
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  INCOME
+  EXPENSE
+}
+
+enum CategorySource {
+  RULE
+  LEARNED
+  CUSTOMER
+  MANUAL
+}
+
+enum RuleDirection {
+  IN
+  OUT
+  ANY
+}
+
+enum ReminderStage {
+  BEFORE_DUE
+  DUE
+  OVERDUE_7
+  OVERDUE_14
+  OVERDUE_30
+}
+
+enum ReminderStatus {
+  SENT
+  FAILED
+  SKIPPED
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  locale    Locale    @default(az)
+  createdAt DateTime  @default(now())
+  sessions  Session[]
+  business  Business?
+}
+
+model LoginToken {
+  id        String    @id @default(cuid())
+  email     String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Business {
+  id                    String    @id @default(cuid())
+  ownerId               String    @unique
+  owner                 User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name                  String
+  voen                  String?
+  legalForm             LegalForm
+  taxRegime             TaxRegime
+  // Simplified tax rate in basis points (200 = 2%). The owner confirms their own rate.
+  simplifiedRateBp      Int       @default(200)
+  hasEmployees          Boolean   @default(false)
+  replyToEmail          String
+  consentTaxDataAt      DateTime
+  consentPersonalDataAt DateTime
+  createdAt             DateTime  @default(now())
+
+  customers    Customer[]
+  invoices     Invoice[]
+  statements   BankStatement[]
+  transactions BankTransaction[]
+  accounts     Account[]
+  rules        CategoryRule[]
+  templates    ReminderTemplate[]
+}
+
+model Customer {
+  id               String    @id @default(cuid())
+  businessId       String
+  business         Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name             String
+  voen             String?
+  email            String?
+  phone            String?
+  defaultTermsDays Int       @default(30)
+  remindersPaused  Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  invoices         Invoice[]
+
+  @@unique([businessId, voen])
+  @@index([businessId])
+}
+
+model Invoice {
+  id               String        @id @default(cuid())
+  businessId       String
+  business         Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerId       String
+  customer         Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  number           String
+  issueDate        DateTime      @db.Date
+  dueDate          DateTime      @db.Date
+  // Total including VAT, and the VAT part of it.
+  amountQ          Int
+  vatQ             Int           @default(0)
+  description      String?
+  source           InvoiceSource @default(MANUAL)
+  remindersEnabled Boolean       @default(true)
+  voidedAt         DateTime?
+  createdAt        DateTime      @default(now())
+
+  allocations     PaymentAllocation[]
+  reminders       ReminderLog[]
+  advanceInterest AdvanceInterest[]
+
+  @@unique([businessId, number])
+  @@index([businessId, dueDate])
+}
+
+model BankStatement {
+  id           String            @id @default(cuid())
+  businessId   String
+  business     Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  fileName     String
+  uploadedAt   DateTime          @default(now())
+  transactions BankTransaction[]
+}
+
+model BankTransaction {
+  id                 String          @id @default(cuid())
+  businessId         String
+  business           Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  statementId        String
+  statement          BankStatement   @relation(fields: [statementId], references: [id], onDelete: Cascade)
+  date               DateTime        @db.Date
+  // Positive = money in, negative = money out.
+  amountQ            Int
+  description        String
+  counterparty       String?
+  counterpartyVoen   String?
+  // Category for the part of the amount not matched to invoices.
+  accountId          String?
+  account            Account?        @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  categoryConfidence Float?
+  categorySource     CategorySource?
+  // Stable hash of date + amount + description to skip duplicates on re-upload.
+  dedupeHash         String
+  createdAt          DateTime        @default(now())
+
+  allocations PaymentAllocation[]
+
+  @@unique([businessId, dedupeHash])
+  @@index([businessId, date])
+}
+
+model PaymentAllocation {
+  id            String          @id @default(cuid())
+  transactionId String
+  transaction   BankTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  invoiceId     String
+  invoice       Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amountQ       Int
+  createdAt     DateTime        @default(now())
+
+  @@unique([transactionId, invoiceId])
+}
+
+model Account {
+  id         String      @id @default(cuid())
+  businessId String
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  code       String
+  nameAz     String
+  nameEn     String
+  type       AccountType
+  // System accounts (bank, receivables, VAT, revenue, suspense) are used by the ledger rules.
+  system     String?
+
+  transactions BankTransaction[]
+  rules        CategoryRule[]
+
+  @@unique([businessId, code])
+  @@unique([businessId, system])
+}
+
+model CategoryRule {
+  id         String        @id @default(cuid())
+  businessId String
+  business   Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  // Lower-cased text matched against the counterparty (learned) or description (keyword).
+  pattern    String
+  matchOn    String        @default("counterparty")
+  direction  RuleDirection @default(ANY)
+  accountId  String
+  account    Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  createdAt  DateTime      @default(now())
+
+  @@unique([businessId, matchOn, pattern, direction])
+}
+
+model ReminderTemplate {
+  id         String        @id @default(cuid())
+  businessId String
+  business   Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  stage      ReminderStage
+  subject    String
+  body       String
+  enabled    Boolean       @default(true)
+
+  @@unique([businessId, stage])
+}
+
+model ReminderLog {
+  id        String         @id @default(cuid())
+  invoiceId String
+  invoice   Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  stage     ReminderStage
+  toEmail   String?
+  status    ReminderStatus
+  error     String?
+  sentAt    DateTime       @default(now())
+
+  // One reminder per stage per invoice, so the worker is safe to re-run.
+  @@unique([invoiceId, stage])
+}
+
+model AdvanceInterest {
+  id        String   @id @default(cuid())
+  invoiceId String
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  advanceQ  Int
+  feeQ      Int
+  createdAt DateTime @default(now())
+}
