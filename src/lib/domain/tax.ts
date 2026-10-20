@@ -95,3 +95,17 @@ export function quarterRange(asOf: Date, which: "current" | "previous" = "previo
 export function prepareSimplifiedTax(receiptsQ: number, rateBp: number) {
   return { baseQ: receiptsQ, rateBp, taxQ: applyBp(receiptsQ, rateBp) };
 }
+
+/**
+ * Money received in [from, to] that counts toward turnover: every incoming payment except
+ * the owner's own capital paid in.
+ */
+export function receiptsInRange(
+  txs: { date: Date; amountQ: number; accountType: string | null }[],
+  from: Date,
+  to: Date,
+): number {
+  return txs
+    .filter((t) => t.amountQ > 0 && t.date >= from && t.date <= to && t.accountType !== "EQUITY")
+    .reduce((s, t) => s + t.amountQ, 0);
+}

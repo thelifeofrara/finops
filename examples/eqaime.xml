@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Sample e-qaimə export. Seller VÖEN matches the demo business, so both are imported as sales invoices. -->
+<Qaimeler>
+  <Qaime>
+    <Seriya>MT2610</Seriya>
+    <Nomre>0000101</Nomre>
+    <Tarix>12.10.2026</Tarix>
+    <Satici><VOEN>1000000001</VOEN><Ad>Demo Biznes FDV</Ad></Satici>
+    <Alici><VOEN>1234567890</VOEN><Ad>Nur Market</Ad></Alici>
+    <Yekun>2360,00</Yekun>
+    <EDV>360,00</EDV>
+  </Qaime>
+  <Qaime>
+    <Seriya>MT2610</Seriya>
+    <Nomre>0000102</Nomre>
+    <Tarix>15.10.2026</Tarix>
+    <Satici><VOEN>1000000001</VOEN><Ad>Demo Biznes FDV</Ad></Satici>
+    <Alici><VOEN>2000000002</VOEN><Ad>Şəhər Aptek MMC</Ad></Alici>
+    <Mallar>
+      <Mal><Ad>Təmizlik xidməti</Ad><Mebleg>590,00</Mebleg><EDV>90,00</EDV></Mal>
+    </Mallar>
+  </Qaime>
+</Qaimeler>

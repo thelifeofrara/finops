@@ -23,17 +23,32 @@ npm run typecheck
 npm test
 ```
 
+## Sign in
+
+Login is by one-time email link (no passwords). Locally the email lands in Mailpit at http://localhost:8025.
+After `npm run seed`, sign in as **demo@finops.local** to see the demo business. Any other email starts a new
+account and goes through business setup.
+
+Sample files to try the importers are in `examples/` (`bank-statement.csv`, `eqaime.xml`).
+
 ## What is built
 
-- **Receivables**: ageing dashboard (current, 1–30, 31–60, 61–90, 90+ days), open invoice list.
-- **Invoices**: create invoices with payment terms and VAT.
-- **Reminders**: escalating schedule per invoice, one reminder per stage, Azerbaijani templates, logged per invoice.
-- **Bank statement import**: CSV with Azerbaijani, English or Russian headers; duplicates skipped on re-upload.
-- **Domain logic** (`src/lib/domain`): money in qəpik, ageing, debtor scoring, invoice discounting quote, payment-to-invoice matching, transaction categorisation, a balanced double-entry ledger, filing calendar.
+- **Login**: email magic links (15 minutes, single use, stored hashed), 30-day sessions, rate-limited link requests, business setup with consents.
+- **Receivables**: ageing dashboard (current, 1–30, 31–60, 61–90, 90+ days), open invoice list, unmatched-payment nudge.
+- **Invoices**: create invoices with payment terms and VAT; invoice page with payments, reminder log, next reminder, limitation date, void, reminder on/off, customer email and pause.
+- **Reminders**: escalating schedule per invoice, one reminder per stage, Azerbaijani templates editable in Settings, logged per invoice.
+- **Bank statement import**: CSV with Azerbaijani, English or Russian headers; duplicates skipped on re-upload; new transactions auto-categorised.
+- **e-qaimə XML import**: sales invoices become invoices (customer found or created by VÖEN); purchase invoices and duplicates are skipped.
+- **Payments**: suggested invoice matches with reasons, one-click confirm, manual match, undo; category picker that learns per counterparty.
+- **Books**: trial balance and profit and loss for any period, built from invoices and bank transactions.
+- **Tax calendar**: deadlines for the next 12 months by regime, simplified tax estimate for the last and current quarter, VAT threshold watch.
+- **Invoice advance preview**: debtor grade, indicative advance and fee per open invoice, "I'm interested" to measure demand.
+- **Languages**: Azerbaijani and English, switchable in the header and remembered per user.
 
 ## Not built yet
 
-Login (the first business in the database is used), e-qaimə XML import, payment matching UI, ledger and trial balance pages, tax calendar page, discounting preview page, English UI.
+Real e-qaimə export samples should be checked against the parser (element names are matched by alias in
+`src/lib/domain/eqaime.ts`), Excel bank statements, multi-user businesses, and a partner integration for advances.
 
 ## Notes
 
