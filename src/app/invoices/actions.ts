@@ -1,13 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { currentBusiness } from "@/lib/db/business";
+import { requireBusiness } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { addDays, parseDate } from "@/lib/domain/dates";
 import { parseMoney } from "@/lib/domain/money";
+import { msg } from "@/lib/i18n";
 
 export async function createInvoice(formData: FormData) {
-  const biz = await currentBusiness();
+  const { business: biz } = await requireBusiness();
   const customerName = String(formData.get("customer") ?? "").trim();
   const number = String(formData.get("number") ?? "").trim();
   const amountQ = parseMoney(String(formData.get("amount") ?? ""));
@@ -16,9 +17,9 @@ export async function createInvoice(formData: FormData) {
   const vatQ = parseMoney(String(formData.get("vat") ?? "")) ?? 0;
 
   if (!customerName || !number || amountQ === null || amountQ <= 0) {
-    throw new Error("Müştəri, nömrə və məbləğ tələb olunur.");
+    throw new Error(msg("err_required"));
   }
-  if (vatQ < 0 || vatQ > amountQ) throw new Error("ƏDV məbləği düzgün deyil.");
+  if (vatQ < 0 || vatQ > amountQ) throw new Error(msg("err_vat"));
 
   const customer =
     (await prisma.customer.findFirst({ where: { businessId: biz.id, name: customerName } })) ??

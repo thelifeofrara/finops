@@ -9,11 +9,13 @@ docker compose up -d        # Postgres on :5432, Mailpit (email inbox) on http:/
 cp .env.example .env
 npm install
 npx prisma migrate dev      # create tables
-npm run seed                # demo business, customers and invoices in every ageing bucket
+npm run seed                # demo business with customers, invoices, payment history
 npm run dev                 # app at http://localhost:3000
-npm run reminders:once      # send due reminders once (DRY_RUN=1 to only log them)
-npm run worker              # or keep running and send reminders every WORKER_INTERVAL_MINUTES
 ```
+
+Sign in with `demo@finops.local` (or any email). The sign-in link arrives in the Mailpit inbox at http://localhost:8025. A new user gets an onboarding step that sets up the business.
+
+Reminders: `npm run reminders:once`, or keep the worker running with `npm run worker`. Set `DRY_RUN=1` to only log them.
 
 ## Checks
 
@@ -21,19 +23,26 @@ npm run worker              # or keep running and send reminders every WORKER_IN
 npm run lint
 npm run typecheck
 npm test
+npm run build
 ```
 
 ## What is built
 
-- **Receivables**: ageing dashboard (current, 1–30, 31–60, 61–90, 90+ days), open invoice list.
+- **Sign-in and onboarding**: email login link, then business setup with a suggested tax regime and consent.
+- **Receivables**: ageing dashboard (current, 1–30, 31–60, 61–90, 90+ days) and open invoices.
 - **Invoices**: create invoices with payment terms and VAT.
-- **Reminders**: escalating schedule per invoice, one reminder per stage, Azerbaijani templates, logged per invoice.
-- **Bank statement import**: CSV with Azerbaijani, English or Russian headers; duplicates skipped on re-upload.
-- **Domain logic** (`src/lib/domain`): money in qəpik, ageing, debtor scoring, invoice discounting quote, payment-to-invoice matching, transaction categorisation, a balanced double-entry ledger, filing calendar.
+- **Import**: bank statement CSV (Azerbaijani, English or Russian headers; duplicates skipped) and e-qaimə XML.
+- **Payments**: matching incoming money to open invoices, with suggestions the owner confirms. Other money is categorised here.
+- **Ledger**: balanced double-entry trial balance, income, expenses, profit, uncategorised amounts, and category choices that the app remembers per counterparty.
+- **Tax**: regime, simplified-tax preparation for the previous quarter, and a filing calendar.
+- **Advance**: indicative advance quotes per invoice, based on the customer's payment history. "I'm interested" records demand. No money moves.
+- **Language**: Azerbaijani by default, English via the switch in the header.
 
 ## Not built yet
 
-Login (the first business in the database is used), e-qaimə XML import, payment matching UI, ledger and trial balance pages, tax calendar page, discounting preview page, English UI.
+- e-qaimə layout: the parser reads invoice fields by name, but has not yet been checked against a real State Tax Service export.
+- Editing reminder templates in the app (the defaults are in `src/lib/domain/reminders.ts`).
+- Direct filing with the State Tax Service and live partner funding. Both need agreements (see the legal review).
 
 ## Notes
 

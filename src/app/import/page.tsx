@@ -1,33 +1,40 @@
-import { currentBusiness } from "@/lib/db/business";
+import { requireBusiness } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { formatMoney } from "@/lib/domain/money";
-import { importStatement } from "./actions";
-import { t } from "@/lib/format";
+import { translator } from "@/lib/i18n";
+import Link from "next/link";
+import { importEqaime, importStatement } from "./actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function ImportPage() {
-  const biz = await currentBusiness();
-  const recent = await prisma.bankTransaction.findMany({
-    where: { businessId: biz.id },
-    orderBy: { date: "desc" },
-    take: 50,
-  });
+  const { business } = await requireBusiness();
+  const { t } = await translator();
+  const recent = await prisma.bankTransaction.findMany({ where: { businessId: business.id }, orderBy: { date: "desc" }, take: 30 });
   return (
     <>
-      <h1>{t.az.imports}</h1>
-      <p className="muted">Bank hesab çıxarışını CSV faylı kimi yükləyin. Başlıq sətri (Tarix, Mədaxil, Məxaric, Təyinat, Qarşı tərəf, VÖEN) avtomatik tanınır.</p>
+      <h1>{t("imp_title")}</h1>
+      <h2>Bank</h2>
+      <p className="muted">{t("imp_bank_help")}</p>
       <form action={importStatement} className="stack">
         <input type="file" name="file" accept=".csv,text/csv" required />
-        <button type="submit">Yüklə</button>
+        <button type="submit">{t("imp_bank_upload")}</button>
       </form>
 
-      <h2>Son əməliyyatlar</h2>
+      <h2>e-qaimə</h2>
+      <p className="muted">{t("imp_eqaime_help")}</p>
+      <form action={importEqaime} className="stack">
+        <input type="file" name="file" accept=".xml,text/xml,application/xml" required />
+        <button type="submit">{t("imp_eqaime_upload")}</button>
+      </form>
+
+      <p><Link href="/payments">{t("imp_go_payments")} →</Link></p>
+      <h2>{t("imp_recent")}</h2>
       {recent.length === 0 ? (
-        <p className="muted">Hələ əməliyyat yoxdur.</p>
+        <p className="muted">{t("noItems")}</p>
       ) : (
         <table>
-          <thead><tr><th>Tarix</th><th>Təyinat</th><th>Qarşı tərəf</th><th className="num">Məbləğ</th></tr></thead>
+          <thead><tr><th>{t("date")}</th><th>{t("description")}</th><th>{t("counterparty")}</th><th className="num">{t("amount")}</th></tr></thead>
           <tbody>
             {recent.map((r) => (
               <tr key={r.id}>

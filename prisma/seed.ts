@@ -60,7 +60,43 @@ async function main() {
       },
     });
   }
-  console.log(`Seeded business ${business.name} with ${invoices.length} invoices.`);
+  // A customer who pays on time, so the advance preview has a real history to score.
+  const good = await prisma.customer.create({
+    data: { businessId: business.id, name: "Güvənli MMC", voen: "7777777777", email: "guvenli@example.com" },
+  });
+  const statement = await prisma.bankStatement.create({ data: { businessId: business.id, fileName: "demo-history.csv" } });
+  for (const [n, issueOffset] of [["FT-0901", -120], ["FT-0902", -90], ["FT-0903", -60]] as const) {
+    const issueDate = addDays(t0, issueOffset);
+    const dueDate = addDays(issueDate, 30);
+    const inv = await prisma.invoice.create({
+      data: { businessId: business.id, customerId: good.id, number: n, issueDate, dueDate, amountQ: 240000, vatQ: 36610 },
+    });
+    const tx = await prisma.bankTransaction.create({
+      data: {
+        businessId: business.id,
+        statementId: statement.id,
+        date: dueDate,
+        amountQ: 240000,
+        description: `Ödəniş ${n}`,
+        counterparty: good.name,
+        counterpartyVoen: good.voen,
+        dedupeHash: `demo-${n}`,
+      },
+    });
+    await prisma.paymentAllocation.create({ data: { transactionId: tx.id, invoiceId: inv.id, amountQ: 240000 } });
+  }
+  await prisma.invoice.create({
+    data: {
+      businessId: business.id,
+      customerId: good.id,
+      number: "FT-0904",
+      issueDate: addDays(t0, -5),
+      dueDate: addDays(t0, 25),
+      amountQ: 180000,
+      vatQ: 27458,
+    },
+  });
+  console.log(`Seeded business ${business.name} with ${invoices.length + 4} invoices.`);
 }
 
 main()
